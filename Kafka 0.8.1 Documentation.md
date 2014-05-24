@@ -88,8 +88,8 @@ Kafka在高层视角上提供了以下几点保证：
 同一个生产者生产到同一个分区的数据是和发送顺序一致的。这就是说，如果消息M1和消息M2被同一个生产者生产，而且M1在M2之前发送，那么M1的偏移值（offset）比M2要小。（译者注：M1和M2需要在同一个分区里）
 <!--Messages sent by a producer to a particular topic partition will be appended in the order they are sent. That is, if a message M1 is sent by the same producer as a message M2, and M1 is sent first, then M1 will have a lower offset than M2 and appear earlier in the log.-->
 一个消费者实例接收到的消息和他们被存储时的顺序是一致的。如果一个主题配置的副本个数是N，我们可以忍受N-1台server的失效而不用担心丢失数据。
-A consumer instance sees messages in the order they are stored in the log.
-For a topic with replication factor N, we will tolerate up to N-1 server failures without losing any messages committed to the log.
+<!--A consumer instance sees messages in the order they are stored in the log.
+For a topic with replication factor N, we will tolerate up to N-1 server failures without losing any messages committed to the log.-->
 更多的细节参见文档的设计部分。
-More details on these guarantees are given in the design section of the documentation.
+<!--More details on these guarantees are given in the design section of the documentation.-->
 
