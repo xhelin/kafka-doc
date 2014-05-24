@@ -8,12 +8,12 @@ Kafka是一个分布式，分区，带副本的commit log服务系统。它提�
 首先，让我们复习一些基本的消息术语：
 <!--First let's review some basic messaging terminology:-->
 * Kafka保留的每条消息的分类被称为**主题**（topic）
-<!--* Kafka maintains feeds of messages in categories called topics.-->
 * 发布相关topic的消息的进程被称为**生产者**（producer）
-<!--* We'll call processes that publish messages to a Kafka topic producers.-->
 * 订阅并处理特定topic的消息的进程被称为**消费者**（consumer）
-<!--* We'll call processes that subscribe to topics and process the feed of published messages consumers.-->
 * Kafka集群中的每一个服务进程被称为**代理者**（broker）
+<!--* Kafka maintains feeds of messages in categories called topics.-->
+<!--* We'll call processes that publish messages to a Kafka topic producers.-->
+<!--* We'll call processes that subscribe to topics and process the feed of published messages consumers.-->
 <!--* Kafka is run as a cluster comprised of one or more servers each of which is called a broker.-->
 
 所以站在系统高层的角度来看，producers通过网络发送消息给Kafka集群，Kafka集群又将消息发送给consumers，如下图：
