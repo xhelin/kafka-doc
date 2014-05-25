@@ -22,8 +22,8 @@ Kafka是一个分布式，分区，带副本的commit log服务系统。它提�
 
 ![Kafka High level](http://kafka.apache.org/images/producer_consumer.png)
 
-客户端与服务器端的通信采用的是一个简单，高性能，且非特定语言的TCP层之上的协议。我们实现了Kafka的Java客户端，但是很多其他语言的客户端在这儿可以获取到。
-<!--Communication between the clients and the servers is done with a simple, high-performance, language agnostic TCP protocol. We provide a Java client for Kafka, but clients are available in many languages.-->
+客户端与服务器端的通信采用的是一个简单，高性能，且非特定语言的TCP层之上的[协议](https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol)。我们实现了Kafka的Java客户端，但是很多[其他语言](https://cwiki.apache.org/confluence/display/KAFKA/Clients)的客户端在这儿可以获取到。
+<!--Communication between the clients and the servers is done with a simple, high-performance, language agnostic [TCP protocol](https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol). We provide a Java client for Kafka, but clients are available in [many languages](https://cwiki.apache.org/confluence/display/KAFKA/Clients).-->
 
 ### 主题和日志
 
@@ -59,8 +59,8 @@ Kafka集群保留一段时间内（可配置）所有发布的消息--不管消�
 
 ### 消费者
 
-传统来看，消息有两种模型：队列和发布-订阅。在队列模型中，一池子的消费者从一个server中读取消息，每条消息只被发给其中的一个消费者；在发布-订阅模型中，消息被广播给所有的消费者，Kafka提供了一个单消费者的抽象--消费者组，它可以同时兼容两种模型。
-<!--Messaging traditionally has two models: queuing and publish-subscribe. In a queue, a pool of consumers may read from a server and each message goes to one of them; in publish-subscribe the message is broadcast to all consumers. Kafka offers a single consumer abstraction that generalizes both of these—the consumer group.-->
+传统来看，消息有两种模型：[队列](http://en.wikipedia.org/wiki/Message_queue)和[发布-订阅](http://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern)。在队列模型中，一池子的消费者从一个server中读取消息，每条消息只被发给其中的一个消费者；在发布-订阅模型中，消息被广播给所有的消费者，Kafka提供了一个单消费者的抽象--消费者组，它可以同时兼容两种模型。
+<!--Messaging traditionally has two models: [queuing](http://en.wikipedia.org/wiki/Message_queue) and [publish-subscribe](http://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern). In a queue, a pool of consumers may read from a server and each message goes to one of them; in publish-subscribe the message is broadcast to all consumers. Kafka offers a single consumer abstraction that generalizes both of these—the consumer group.-->
 消费者用组名标识自己，每一条发布的消息会被传递给所有订阅了这个主题的消费者组，每个消费者组只会有一个消费者接收到这条消息。消费者组中的消费者实例可以是不同的进程或者干脆在不同的机器上。
 <!--Consumers label themselves with a consumer group name, and each message published to a topic is delivered to one consumer instance within each subscribing consumer group. Consumer instances can be in separate processes or on separate machines.-->
 如果所有的消费者都在同一个组下面，那么就和传统队列模型一样，消费者之间会进行负载均摊。
@@ -92,4 +92,45 @@ Kafka在高层视角上提供了以下几点保证：
 For a topic with replication factor N, we will tolerate up to N-1 server failures without losing any messages committed to the log.-->
 更多的细节参见文档的设计部分。
 <!--More details on these guarantees are given in the design section of the documentation.-->
+
+## 1.2 使用场景
+
+以下是使用Kafka的几个普通的场景。如果想要了解更多场景请参看这篇[blog](http://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)。
+<!--Here is a description of a few of the popular use cases for Apache Kafka. For an overview of a number of these areas in action, see this [blog post](http://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying).-->
+
+### 消息系统
+
+Kafka可以替换传统的消息代理（message broker）。使用消息代理有很多原因(为了将处理消息和生产消息解耦开，缓存未被处理的消息等等)。对比大多数的消息系统，Kafka拥有更大的吞吐，内置分区，副本，以及错误容忍，这些特性都是选择Kafka作为大型可扩展消息处理应用的原因。
+<!--Kafka works well as a replacement for a more traditional message broker. Message brokers are used for a variety of reasons (to decouple processing from data producers, to buffer unprocessed messages, etc). In comparison to most messaging systems Kafka has better throughput, built-in partitioning, replication, and fault-tolerance which makes it a good solution for large scale message processing applications.-->
+从我们的经验角度来看，消息系统通常被用在相对吞吐量不大但是延迟要求低的场景中，并且通常都需要强健的持久化保障。
+<!--In our experience messaging uses are often comparatively low-throughput, but may require low end-to-end latency and often depend on the strong durability guarantees Kafka provides.-->
+在这个领域，Kafka和[ActiveMQ](http://activemq.apache.org/)或[RabbitMQ](https://www.rabbitmq.com/)这些传统消息系统进行比较。
+<!--In this domain Kafka is comparable to traditional messaging systems such as [ActiveMQ](http://activemq.apache.org/) or [RabbitMQ](https://www.rabbitmq.com/).-->
+
+### 网站活动追踪
+
+最初Kafka被用来搭建网站用户活动追踪的管道，管道中是一系列实时的消息流。站点的活动信息（页面浏览，搜索，以及其他用户的活动）被发布成不同主题下的流。这些流可以被不同场景下的应用订阅，包括但不限于实时处理，实时监控，上载到hadoop，或是构建离线数据仓库。
+<!--The original use case for Kafka was to be able to rebuild a user activity tracking pipeline as a set of real-time publish-subscribe feeds. This means site activity (page views, searches, or other actions users may take) is published to central topics with one topic per activity type. These feeds are available for subscription for a range of use cases including real-time processing, real-time monitoring, and loading into Hadoop or offline data warehousing systems for offline processing and reporting.-->
+活动追踪消息的量通常都很大，因为用户的每一个行为都会产生消息。
+<!--Activity tracking is often very high volume as many activity messages are generated for each user page view.-->
+
+### 度量
+Kafka经常被用在监控操作数据上。比如要将分布式应用的操作记录集中并导入聚合成一个流用来做统计分析。
+<!--Kafka is often used for operational monitoring data. This involves aggregating statistics from distributed applications to produce centralized feeds of operational data.-->
+
+### 日志收集
+许多人将Kafka作为日志收集的一个解决方案。典型的日志收集是将物理的日志文件收集起来并且将它们导入到一个集中的地方（比如HDFS）。Kafka将文件细节抽象掉，提供了一个更为简洁的抽象（消息流）。这使得处理延迟变低，且能方便地支持多数据源和多消费者。对比Scribe 或者 Flume这些消息收集工具，Kafka提供了相同的性能，更强的持久化(副本)，以及端到端的低延迟。
+<!--Many people use Kafka as a replacement for a log aggregation solution. Log aggregation typically collects physical log files off servers and puts them in a central place (a file server or HDFS perhaps) for processing. Kafka abstracts away the details of files and gives a cleaner abstraction of log or event data as a stream of messages. This allows for lower-latency processing and easier support for multiple data sources and distributed data consumption. In comparison to log-centric systems like Scribe or Flume, Kafka offers equally good performance, stronger durability guarantees due to replication, and much lower end-to-end latency.-->
+
+### 流处理
+许多用户将处理消息分成了多个阶段性的处理过程：原始数据被消费出来并聚合产生成一些新主题的流，被用作进一步的处理。举个例子，一个文章推荐处理的系统通常先是会将文章内容通过RSS抓取下来，发布到一个叫"article"的主题里；后续的处理会将内容进行规范，去重和清洗；最终的阶段会将内容和用户关联匹配上。整个过程定义了一个实时数据流动的图。[Storm](https://github.com/nathanmarz/storm) 和 [Samza](http://samza.incubator.apache.org/) 是这一类应用比较流行的实现。
+<!--Many users end up doing stage-wise processing of data where data is consumed from topics of raw data and then aggregated, enriched, or otherwise transformed into new Kafka topics for further consumption. For example a processing flow for article recommendation might crawl article content from RSS feeds and publish it to an "articles" topic; further processing might help normalize or deduplicate this content to a topic of cleaned article content; a final stage might attempt to match this content to users. This creates a graph of real-time data flow out of the individual topics. [Storm](https://github.com/nathanmarz/storm) and [Samza](http://samza.incubator.apache.org/) are popular frameworks for implementing these kinds of transformations.-->
+
+### Event sourcing
+Event sourcing是应用程序的一种设计范式，状态的改变会被记录成一个时间相关的序列。Kafka大容量的特性使得可以很好地支持这一类应用。
+<!--Event sourcing is a style of application design where state changes are logged as a time-ordered sequence of records. Kafka's support for very large stored log data makes it an excellent backend for an application built in this style.-->
+
+### Commit log
+Kafka可以作为分布式系统的commit log服务。log帮助数据在节点之间复制，并且帮助失效的节点进行数据的恢复。Kafka的[日志压缩](http://kafka.apache.org/documentation.html#compaction)特性在其中起到了帮助作用。Kafka在这个场景下类似于Apache的[BookKeeper](http://zookeeper.apache.org/bookkeeper/)项目.
+<!--Kafka can serve as a kind of external commit-log for a distributed system. The log helps replicate data between nodes and acts as a re-syncing mechanism for failed nodes to restore their data. The [log compaction](http://kafka.apache.org/documentation.html#compaction) feature in Kafka helps support this usage. In this usage Kafka is similar to Apache [BookKeeper](http://zookeeper.apache.org/bookkeeper/) project.-->
 
