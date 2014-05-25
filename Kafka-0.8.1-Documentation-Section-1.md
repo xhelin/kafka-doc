@@ -126,11 +126,210 @@ Kafka经常被用在监控操作数据上。比如要将分布式应用的操作
 许多用户将处理消息分成了多个阶段性的处理过程：原始数据被消费出来并聚合产生成一些新主题的流，被用作进一步的处理。举个例子，一个文章推荐处理的系统通常先是会将文章内容通过RSS抓取下来，发布到一个叫"article"的主题里；后续的处理会将内容进行规范，去重和清洗；最终的阶段会将内容和用户关联匹配上。整个过程定义了一个实时数据流动的图。[Storm](https://github.com/nathanmarz/storm) 和 [Samza](http://samza.incubator.apache.org/) 是这一类应用比较流行的实现。
 <!--Many users end up doing stage-wise processing of data where data is consumed from topics of raw data and then aggregated, enriched, or otherwise transformed into new Kafka topics for further consumption. For example a processing flow for article recommendation might crawl article content from RSS feeds and publish it to an "articles" topic; further processing might help normalize or deduplicate this content to a topic of cleaned article content; a final stage might attempt to match this content to users. This creates a graph of real-time data flow out of the individual topics. [Storm](https://github.com/nathanmarz/storm) and [Samza](http://samza.incubator.apache.org/) are popular frameworks for implementing these kinds of transformations.-->
 
-### Event sourcing
+### Event Sourcing
 Event sourcing是应用程序的一种设计范式，状态的改变会被记录成一个时间相关的序列。Kafka大容量的特性使得可以很好地支持这一类应用。
 <!--Event sourcing is a style of application design where state changes are logged as a time-ordered sequence of records. Kafka's support for very large stored log data makes it an excellent backend for an application built in this style.-->
 
-### Commit log
+### Commit Log
 Kafka可以作为分布式系统的commit log服务。log帮助数据在节点之间复制，并且帮助失效的节点进行数据的恢复。Kafka的[日志压缩](http://kafka.apache.org/documentation.html#compaction)特性在其中起到了帮助作用。Kafka在这个场景下类似于Apache的[BookKeeper](http://zookeeper.apache.org/bookkeeper/)项目.
 <!--Kafka can serve as a kind of external commit-log for a distributed system. The log helps replicate data between nodes and acts as a re-syncing mechanism for failed nodes to restore their data. The [log compaction](http://kafka.apache.org/documentation.html#compaction) feature in Kafka helps support this usage. In this usage Kafka is similar to Apache [BookKeeper](http://zookeeper.apache.org/bookkeeper/) project.-->
 
+## 1.3 迅速开始
+
+这篇tutorial假定你从一个全新的环境开始，里面不包含历史Kafka或者Zookeeper数据。
+<!--This tutorial assumes you are starting fresh and have no existing Kafka or ZooKeeper data.-->
+
+### Step 1: 下载代码
+
+[Download](https://www.apache.org/dyn/closer.cgi?path=/kafka/0.8.1/kafka_2.9.2-0.8.1.tgz) 0.8.1 版本并且解压.
+<!--[Download](https://www.apache.org/dyn/closer.cgi?path=/kafka/0.8.1/kafka_2.9.2-0.8.1.tgz) the 0.8.1 release and un-tar it.-->
+
+	> tar -xzf kafka_2.9.2-0.8.1.tgz
+	> cd kafka_2.9.2-0.8.1
+
+### Step 2: 启动服务
+
+Kafka使用了Zookeeper，因此你需要先启动Zookeeper服务。你可以使用简易的打包好的脚本快速启动一个单点的Zookeeper实例。
+<!--Kafka uses ZooKeeper so you need to first start a ZooKeeper server if you don't already have one. You can use the convenience script packaged with kafka to get a quick-and-dirty single-node ZooKeeper instance.-->
+
+	> bin/zookeeper-server-start.sh config/zookeeper.properties
+	[2013-04-22 15:01:37,495] INFO Reading configuration from: config/zookeeper.properties (org.apache.zookeeper.server.quorum.QuorumPeerConfig)
+	...
+
+现在启动Kafka服务：
+<!--Now start the Kafka server:-->
+
+	> bin/kafka-server-start.sh config/server.properties
+	[2013-04-22 15:01:47,028] INFO Verifying properties (kafka.utils.VerifiableProperties)
+	[2013-04-22 15:01:47,051] INFO Property socket.send.buffer.bytes is overridden to 1048576 (kafka.utils.VerifiableProperties)
+	...
+
+### Step 3: 创建一个主题
+
+让我们创建一个叫做“test”的主题，其中只包含1个分区，1个副本。
+<!--Let's create a topic named "test" with a single partition and only one replica:-->
+
+	> bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic test
+
+现在我们可以使用命令列出所有的主题：
+<!--We can now see that topic if we run the list topic command:-->
+
+	> bin/kafka-topics.sh --list --zookeeper localhost:2181
+	test
+
+除了手动创建和配置新的主题外，你也可以让broker自动创建和配置新的主题。
+<!--Alternatively, instead of manually creating topics you can also configure your brokers to auto-create topics when a non-existent topic is published to.-->
+
+### Step 4: 发送一些消息
+
+Kafka提供了一个命令行客户端用来从文件中或者stdin中读入数据并且发送到Kafka集群里。默认文件中的一行是一条消息。
+<!--Kafka comes with a command line client that will take input from a file or from standard input and send it out as messages to the Kafka cluster. By default each line will be sent as a separate message.-->
+
+启动producer，在控制台里键入一些字符发送到server。
+<!--Run the producer and then type a few messages into the console to send to the server.-->
+	
+	> bin/kafka-console-producer.sh --broker-list localhost:9092 --topic test 
+	This is a message
+	This is another message
+
+### Step 5: 启动一个消费者
+
+Kafka也提供一个命令行消费者程序，它会将消息dump到stdout。
+<!--Kafka also has a command line consumer that will dump out messages to standard output.-->
+	
+	> bin/kafka-console-consumer.sh --zookeeper localhost:2181 --topic test --from-beginning
+	This is a message
+	This is another message
+
+如果你在不同的终端运行上面两个程序，你将会看到从producer终端键入的消息会打印在consumer终端上。
+<!--If you have each of the above commands running in a different terminal then you should now be able to type messages into the producer terminal and see them appear in the consumer terminal.-->
+所有的这些命令行工具都有一些额外选项，你可以不加任何参数运行这些命令，它将打印出详细的使用信息。
+<!--All of the command line tools have additional options; running the command with no arguments will display usage information documenting them in more detail.-->
+
+### Step 6: 创建多server的集群
+
+到现在为止，我们跑了例子是单broker的，这不是很有趣。虽然看起来单broker集群与多broker集群仅仅只是broker数量的不同，但是为了有一个切身的体验，现在让我们将集群的broker数量扩展到3（但是仍然是在一台机器上）。
+<!--So far we have been running against a single broker, but that's no fun. For Kafka, a single broker is just a cluster of size one, so nothing much changes other than starting a few more broker instances. But just to get feel for it, let's expand our cluster to three nodes (still all on our local machine).-->
+首先，我们创建另外两个broker的配置文件：
+<!--First we make a config file for each of the brokers:-->
+	
+	> cp config/server.properties config/server-1.properties 
+	> cp config/server.properties config/server-2.properties
+
+现在编辑这三个文件，配置成下列参数：
+<!--Now edit these new files and set the following properties:-->
+
+	config/server-1.properties:
+   		broker.id=1
+   		port=9093
+   		log.dir=/tmp/kafka-logs-1
+ 
+	config/server-2.properties:
+		broker.id=2
+		port=9094
+		log.dir=/tmp/kafka-logs-2
+
+属性broker.id是集群中每个broker的独一无二的且永久的名字。我们必须重写端口和日志目录只是因为我们将所有broker跑在了一台机器上。
+<!--The broker.id property is the unique and permanent name of each node in the cluster. We have to override the port and log directory only because we are running these all on the same machine and we want to keep the brokers from all trying to register on the same port or overwrite each others data.-->
+
+我们已经启动了Zookeeper和一个broker，现在是要启动另外两个新broker的时候了：
+<!--We already have Zookeeper and our single node started, so we just need to start the two new nodes:-->
+	
+	> bin/kafka-server-start.sh config/server-1.properties &
+	...
+	> bin/kafka-server-start.sh config/server-2.properties &
+	...
+
+现在创建一个有3个副本的主题：
+<!--Now create a new topic with a replication factor of three:-->
+
+	> bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic my-replicated-topic
+
+好，现在我们有了一个集群，我们如何能得知每个broker在干嘛？可以使用一个描述topic的命令：
+<!--Okay but now that we have a cluster how can we know which broker is doing what? To see that run the "describe topics" command:-->
+
+	> bin/kafka-topics.sh --describe --zookeeper localhost:2181 --topic my-replicated-topic
+	Topic:my-replicated-topic   PartitionCount:1    ReplicationFactor:3 Configs:
+	        Topic: my-replicated-topic  Partition: 0    Leader: 1   Replicas: 1,2,0 Isr: 1,2,0
+
+解释一下命令的输出。第一行给出了一个包含所有的分区的摘要，其他每一行包含一个独立的分区的信息。既然我们只有1个分区（译者注：原文有误），所以这里只有两行输出。
+<!--Here is an explanation of output. The first line gives a summary of all the partitions, each additional line gives information about one partition. Since we have only two partitions for this topic there are only two lines.-->
+
+* “leader” 是负责这个分区读和写的节点。每一个节点都会是随机一些分区的leader。
+* “replicas” 是所有副本所在的节点，不论是否是leader，也不论是否现在存活。
+* “isr” 是同步完毕的副本("in-sync"), 这里的节点是所有副本节点集合的子集，并且是现在存活的，且数据从leader处同步完毕。
+
+<!--* "leader" is the node responsible for all reads and writes for the given partition. Each node will be the leader for a randomly selected portion of the partitions.
+* "replicas" is the list of nodes that replicate the log for this partition regardless of whether they are the leader or even if they are currently alive.
+* "isr" is the set of "in-sync" replicas. This is the subset of the replicas list that is currently alive and caught-up to the leader.-->
+
+注意到在这个例子中，节点1是仅有的一个分区的leader。
+<!--Note that in my example node 1 is the leader for the only partition of the topic.-->
+
+我们可以对之前的那个主题运行同样的命令，看看会有什么输出：
+<!--We can run the same command on the original topic we created to see where it is:-->
+
+	> bin/kafka-topics.sh --describe --zookeeper localhost:2181 --topic test
+	Topic:test  PartitionCount:1    ReplicationFactor:1 Configs:
+	        Topic: test Partition: 0    Leader: 0   Replicas: 0 Isr: 0
+
+毫无例外的，没有副本，leader是节点0，这个节点是我们之前创建的唯一一个server。
+<!--So there is no surprise there—the original topic has no replicas and is on server 0, the only server in our cluster when we created it.-->
+
+让我们来发布一些新主题的数据：
+<!--Let's publish a few messages to our new topic:-->
+
+	> bin/kafka-console-producer.sh --broker-list localhost:9092 --topic my-replicated-topic
+	...
+	my test message 1
+	my test message 2
+	^C
+
+现在来消费这些数据：
+<!--Now let's consume these messages:-->
+
+	> bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topic my-replicated-topic
+	...
+	my test message 1
+	my test message 2
+	^C
+
+现在测试一下错误容忍。节点1现在是leader，我们来杀掉它。
+<!--Now let's test out fault-tolerance. Broker 1 was acting as the leader so let's kill it:-->
+
+	> ps | grep server-1.properties
+	7564 ttys002    0:15.91 /System/Library/Frameworks/JavaVM.framework/Versions/1.6/Home/bin/java...
+	> kill -9 7564
+
+领导权被交由到了其中一个slave上，节点1现在不在(in-sync)的列表里面了。
+<!--Leadership has switched to one of the slaves and node 1 is no longer in the in-sync replica set:-->
+
+	> bin/kafka-topics.sh --describe --zookeeper localhost:218192 --topic my-replicated-topic
+	Topic:my-replicated-topic   PartitionCount:1    ReplicationFactor:3 Configs:
+    Topic: my-replicated-topic  Partition: 0    Leader: 2   Replicas: 1,2,0 Isr: 2,0
+
+但是消息仍然可以被消费，即使原来的leader已经挂掉了。
+<!--But the messages are still be available for consumption even though the leader that took the writes originally is down:-->
+
+	> bin/kafka-console-consumer.sh --zookeeper localhost:2181 --from-beginning --topic my-replicated-topic
+	...
+	my test message 1
+	my test message 2
+	^C
+
+## 1.4 生态圈
+
+除了Kafka官方发布的版本外，周边还有许多丰富的围绕Kafka的生产工具。[这个页面](https://cwiki.apache.org/confluence/display/KAFKA/Ecosystem)里面列出了包括与流处理系统的集成，与hadoop系统的集成，Kafka的监控和部署等在内的工具。
+<!--There are a plethora of tools that integrate with Kafka outside the main distribution. The [ecosystem page](https://cwiki.apache.org/confluence/display/KAFKA/Ecosystem) lists many of these, including stream processing systems, Hadoop integration, monitoring, and deployment tools.-->
+
+## 1.5 版本升级
+
+### 从 0.8.0 升级至 0.8.1
+
+0.8.1完全兼容0.8.因此升级只需要一次操作一个broker，通过简单的关闭，升级，重启就完成了。
+<!--0.8.1 is fully compatible with 0.8. The upgrade can be done one broker at a time by simply bringing it down, updating the code, and restarting it.-->
+
+### 从 0.7 版本升级
+
+0.8增加了副本功能，这是我们第一个不向后兼容的版本：我们对API做了大范围的改动，Zookeeper数据结构，协议，配置这些也都变了。因此从0.7升级到0.8.x需要一个[迁移工具](https://cwiki.apache.org/confluence/display/KAFKA/Migrating+from+0.7+to+0.8)。迁移可以在线完成。
+<!--0.8, the release in which added replication, was our first backwards-incompatible release: major changes were made to the API, ZooKeeper data structures, and protocol, and configuration. The upgrade from 0.7 to 0.8.x requires a [special tool](https://cwiki.apache.org/confluence/display/KAFKA/Migrating+from+0.7+to+0.8) for migration. This migration can be done without downtime.-->
